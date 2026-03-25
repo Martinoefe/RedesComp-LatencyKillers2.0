@@ -121,9 +121,13 @@ Al aplicar el mecanismo de detección de errores (EDAC), se determinó que la pa
 
 ## Análisis del error
 
-Durante la experiencia, se pudieron haber alterado uno o más bits de la payload. Para verificar la integridad, se utilizaron técnicas basadas en paridad/XOR.
+Durante la experiencia, se pudieron haber alterado uno o más bits de la payload. Para verificar la integridad, se utilizaron técnicas basadas en paridad/XOR. En nuestro grupo, nos toco enviar un paquete utilizando paridad. Luego recibimos un paquete con su EDAC y tuvimos que verificar su integridad con XOR.
 
-La operación XOR permite comparar bits de a pares: si son iguales el resultado es 0, y si son distintos el resultado es 1. Aplicando esta operación sobre la payload (y su valor de control), se obtiene un resultado que permite verificar si los datos fueron alterados.
+La operación XOR (Exclusive OR) permite comparar bits de a pares. Su comportamiento es el siguiente:
+- Si los bits son iguales, el resultado es 0
+- Si los bits son distintos, el resultado es 1
+  
+Esta propiedad se utiliza para verificar la integridad de los datos. Al aplicar la operación XOR sobre la payload junto con su valor de control (por ejemplo, un checksum o código de verificación), se obtiene un resultado que debería ser 0 si los datos no fueron modificados.
 
 El análisis realizado indicó que existía al menos un error en los datos recibidos.
 
