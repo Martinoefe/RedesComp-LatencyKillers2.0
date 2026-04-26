@@ -57,3 +57,22 @@ Las claves SSH ofrecen varias ventajas fundamentales sobre el uso de contraseña
 
 
 Otra ventaja significativa es la comodidad y capacidad de automatización que permiten, facilitando el inicio de sesión remoto y la transferencia segura de archivos sin necesidad de intervención manual constante, lo cual es ideal para scripts y administración de infraestructura a gran escala. Desde el punto de vista de la gestión de identidades, las claves permiten un control de acceso más escalable: para revocar el acceso de un usuario, basta con eliminar su clave pública del servidor, evitando los peligros de seguridad asociados a las contraseñas compartidas que rara vez se cambian. En resumen, las claves SSH sustituyen el modelo de un "secreto compartido" por uno de criptografía de punto terminal, ofreciendo una defensa superior contra la suplantación de identidad y las intrusiones en redes no confiables.
+
+
+
+
+### Conexion por ssh
+La primera vez que nos queriamos conectar, nos tiro un error (Dede Windows por lo menos)- 
+
+Bad permissions. Try removing permissions for user: NT AUTHORITY\\Usuarios autentificados (S-1-5-11) on file D:/Descargas/pc3_key (1).pem.
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Permissions for 'D:\\Descargas\\pc3_key (1).pem' are too open.
+It is required that your private key files are NOT accessible by others.
+This private key will be ignored.
+Load key "D:\\Descargas\\pc3_key (1).pem": bad permissions
+pc-alumnos-3@4.206.219.90: Permission denied (publickey).
+
+
+El problema era que tenia permisos demasiados abiertas las KEY y SSH no me permitia usarlas por eso. 
