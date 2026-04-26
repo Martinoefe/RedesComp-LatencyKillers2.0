@@ -23,7 +23,7 @@ A través de este TP, se aborda la seguridad en las comunicaciones mediante el e
 
 ---
 
-## Investigación conceptual
+## 1) Investigación conceptual
 
 
 ### SSH y que problema resuelve
@@ -61,8 +61,8 @@ Otra ventaja significativa es la comodidad y capacidad de automatización que pe
 
 
 
-### Conexion por ssh
-La primera vez que nos queriamos conectar, nos tiro un error (Dede Windows por lo menos)- 
+### 2) Conexion por SSH
+La primera vez que nos queriamos conectar nos tiro un error (desde Windows por lo menos)- 
 
 Bad permissions. Try removing permissions for user: NT AUTHORITY\\Usuarios autentificados (S-1-5-11) on file D:/Descargas/pc3_key (1).pem.
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -74,5 +74,60 @@ This private key will be ignored.
 Load key "D:\\Descargas\\pc3_key (1).pem": bad permissions
 pc-alumnos-3@4.206.219.90: Permission denied (publickey).
 
-
 El problema era que tenia permisos demasiados abiertas las KEY y SSH no me permitia usarlas por eso. 
+
+Luego logramos hacer la conexión SSH con las VM.
+
+### 3) Uso de Wireshark
+Al analizar el tráfico con Wireshark nos dimos cuenta que no pudimos descifrar el contenido de los paquetes, esto es debido al uso de SSH el cual trabaja en dos pasos: primero se hace lo que se conoce como "handshake" en donde la VM y nuestra PC local acuerdan como se enviarán la información; en segundo lugar viene el cifrado donde la información se encripta de forma tal que solo nuestra PC local o la VM puedan saber desencriptar la información y leerla. Wireshark funciona como un interceptor que puede ver información como de donde salió el paquete pero no tiene la información necesaria para descifrarlo.
+
+![PC3](/TP3/assets/ConexionPC3.jpeg)
+
+---
+
+![PC4](/TP3/assets/ConexionPC4.jpeg)
+
+### 4) NetCat
+
+Esta vez fue posible descifrar el contenido de los mensajes interceptados por Wireshark dada la ausencia de SSH que encripte los mismos. Esto nos hizo ver la importancia de usar herramientas de seguridad como SSH que nos ayudan a mantener la privacidad de nuestra información.
+
+Acá se pueden ver los mensajes que enviamos a través del servidor y como el Wireshark los pudo leer.
+
+![severPC3](/TP3/assets/chatServerPC3.jpeg)
+![serverPC4](/TP3/assets/chatServerPC4.jpeg)
+
+Y acá es donde se ve como Wireshark leyó el mensaje:
+
+![mensaje_wireshark](/TP3/assets/Wireshark_conMensaje.jpeg)
+
+Y esto es lo que detectó el Wireshark cuando agregamos el UDP:
+
+![UDP](/TP3/assets/Wireshark_conMensaje_UDP.jpeg)
+
+### 5) Trafico HTTP
+
+Levantamos un HTML sencillo pero como el server usa protocolo HTTP y no HTTPS (S de Secure) es posible sufrir ataques del tipo man in the middle en el cual se intercepten, lean y modifiquen los paquetes porque estos no cuentan con ningún tipo de certificado de seguridad ni de integridad de datos que adviertan al usuario receptor de su modificación.
+
+![HTML_Messi](/TP3/assets/HTML.jpeg)
+![wireshark_HTML](/TP3/assets/ultimoWireshark.jpeg)
+
+### 6) Video del hackeo al iPhone
+
+En el video se ve como se aprovechan de una vulnerabilidad del sistema de pago sin contacto para robar U$D 10,000 de la tarjeta VISA vinculada al iPhone del sujeto.
+
+El ataque es lo que en ciberseguridad se conoce como un ataque de man in the middle. Usando equipos especiales ocultos, los hackers interceptan la comunicación inalámbrica entre el celular de la víctima y un lector de tarjetas real, modificando los datos en tiempo real.
+
+Apple tiene un sistema que permite pagar boleto de subte con el teléfono bloqueado, los atacantes se aprovechan de esta funcionalidad envíando una señal falsa al iPhone que le haga creer que está en una estación de subte para que pueda hacer el pago aun estando bloqueado.
+
+Luego, proceden a engañar al iPhone haciendole creer que es una transacción de bajo valor por lo que no requiere verificación biométrica como usualmente se pide en transacciones grandes. Esto se logra cambiando un solo bit de la información.
+
+Por último, modifican el mensaje de respuesta que el iPhone le envía al lector de tarjetas, diciéndole falsamente que el usuario "ya verificó la compra" en su teléfono. Con esto el cobro se aprueba.
+
+
+En los Trabajos Prácticos realizados hasta el momento trabajamos con conceptos relacionados a los que se muestran en el video:
+
+TP1 - Modificación de bits en el Payload: En la segunda parte del TP1 experimentamos con la inyección de errores modificando bits de los paquetes. El ataque del video se basa exactamente en esto: los atacantes interceptan el paquete de datos y cambian bits específicos como dijimos antes.
+
+TP2 - Análisis de tráfico: El TP2 se centra en capturar y analizar el comportamiento del tráfico. En el video, los investigadores relatan que fueron a una estación de metro con sus notebooks para "escanear las señales" y leer el código que enviaban los molinetes, lo cual es equivalente a lo que nosotors hicimos analizando paquetes.
+TP3 - man in the middle y HTTP: En el TP3 vimos que el tráfico HTTP viaja en texto plano y puede ser intervenido , a diferencia del tráfico cifrado de SSH. El ataque al youtuber del video es un man in the middle donde interceptan la señal NFC porque la información viaja sin cifrar por motivos de compatibilidad.
+TP3 - Cifrado y Autenticación: El TP3 nos pide investigar la diferencia entre estos conceptos. En el video se ve que aunque los datos del lector viajan sin cifrar, el sistema confía en la autenticación mediante firmas criptográficas asimétricas. El hackeo funciona justamente porque la configuración de Visa omite ese paso de autenticación al estar en "modo transporte".
