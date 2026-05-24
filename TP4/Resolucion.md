@@ -85,14 +85,14 @@ Los datos se representan directamente en bytes, sin pasar por una representació
  
 #### Tabla comparativa
  
-| Característica | No binaria (JSON, XML) | Binaria (protobuf, MessagePack) |
-|---|---|---|
-| Legibilidad humana | Alta | Nula |
-| Tamaño del mensaje | Mayor | Menor |
-| Velocidad de parsing | Menor | Mayor |
-| Facilidad de debugging | Alta | Baja |
-| Interoperabilidad | Muy alta | Alta (requiere esquema en algunos casos) |
-| Casos de uso típicos | APIs REST, configuración, logs | Sistemas de alto rendimiento, IoT, microservicios |
+| Característica         | No binaria (JSON, XML)         | Binaria (protobuf, MessagePack)                   |
+| ---------------------- | ------------------------------ | ------------------------------------------------- |
+| Legibilidad humana     | Alta                           | Nula                                              |
+| Tamaño del mensaje     | Mayor                          | Menor                                             |
+| Velocidad de parsing   | Menor                          | Mayor                                             |
+| Facilidad de debugging | Alta                           | Baja                                              |
+| Interoperabilidad      | Muy alta                       | Alta (requiere esquema en algunos casos)          |
+| Casos de uso típicos   | APIs REST, configuración, logs | Sistemas de alto rendimiento, IoT, microservicios |
  
 En el contexto de este trabajo práctico utilizamos **JSON**, un formato de serialización no binaria, por su simplicidad, legibilidad y amplio soporte en Python a través del módulo `json`.
 
@@ -278,3 +278,169 @@ En la terminal del servidor se pudo observar la recepción correcta de cada mens
 **Captura 2 — Terminal del servidor recibiendo los mensajes:**
  
 ![Terminal del servidor punto 3](assets/captura_servidor_p3.png)
+
+
+## Punto 4 — Cifrado de la payload del mensaje
+
+En este punto se incorporó una técnica de seguridad al sistema cliente-servidor desarrollado anteriormente.  
+La consigna solicita cifrar únicamente la carga útil del mensaje, es decir, el campo `payload`, manteniendo visible el resto de la estructura JSON.
+
+El mensaje original tenía la siguiente forma:
+
+```json
+{
+  "group": "Latency_Killers2.0",
+  "payload": "hola servidor"
+}
+```
+Luego de implementar el cifrado, el mensaje enviado conserva el mismo formato general, pero el contenido de payload viaja cifrado:
+
+```json
+{
+  "group": "Latency_Killers2.0",
+  "payload": "gAAAAABpJx9J..."
+}
+```
+De esta forma, el servidor sigue pudiendo interpretar el JSON y reconocer el grupo emisor, pero no puede leer directamente el contenido real del mensaje si no posee la clave correspondiente.
+
+### Técnica de cifrado utilizada
+
+Para cifrar la payload se utilizó Fernet, una implementación de cifrado simétrico provista por la librería `cryptography` de Python.
+Fernet permite cifrar y descifrar mensajes utilizando una misma clave secreta. Esto significa que tanto el cliente como el servidor deben conocer la misma clave para poder trabajar con los datos cifrados.
+En este punto solo se implementó el cifrado del lado del cliente, por lo que el servidor recibe la carga útil cifrada y la muestra tal como llega.
+
+### ¿Qué es el cifrado simétrico?
+
+El cifrado simétrico es una técnica de criptografía en la que se utiliza la misma clave tanto para cifrar como para descifrar la información.
+
+El funcionamiento general es el siguiente:
+
+1. El emisor toma el mensaje original.
+2. Usa una clave secreta para cifrarlo.
+3. Envía el mensaje cifrado por la red.
+4. El receptor necesita la misma clave para poder descifrarlo.
+
+En nuestro caso:
+
+- El cliente toma el texto ingresado por consola.
+- Cifra ese texto usando Fernet.
+- Coloca el resultado cifrado dentro del campo payload.
+- Envía el JSON serializado por TCP al servidor.
+
+
+### ¿Por qué se eligió Fernet?
+
+Se eligió Fernet porque es una opción simple, segura y fácil de implementar para este tipo de práctica.
+
+Sus principales características son:
+
+- Utiliza cifrado simétrico.
+- Genera un resultado cifrado en formato de texto, fácil de incluir dentro de un JSON.
+- Permite verificar que el mensaje no haya sido modificado.
+- Incluye información interna para evitar que el mismo mensaje produzca siempre exactamente la misma salida cifrada.
+- Es sencilla de usar desde Python mediante la librería `cryptography`.
+
+Esto la hace adecuada para este trabajo práctico, ya que permite demostrar claramente que el contenido de la payload viaja cifrado sin modificar el funcionamiento general del protocolo TCP ni la estructura JSON definida por la consigna.
+
+
+
+### Instalación de la librería
+
+Para utilizar Fernet fue necesario instalar la librería `cryptography`:
+
+```bash
+pip install cryptography
+```
+Esta librería contiene herramientas criptográficas para Python, entre ellas el módulo `Fernet`.
+
+
+### Generación de la clave secreta
+
+Luego se generó una clave secreta utilizando el siguiente comando:
+
+```bash
+python -c "from cryptography.fernet import Fernet; open('secret.key', 'wb').write(Fernet.generate_key())"
+```
+
+Este comando crea un archivo llamado:
+```bash
+secret.key
+```
+
+Dentro de ese archivo se guarda la clave que será utilizada para cifrar los mensajes.
+
+La clave se genera una sola vez y luego se reutiliza cada vez que el cliente necesita cifrar un mensaje.
+
+
+### Implementación en el cliente
+
+Primero se importó Fernet desde la librería cryptography:
+
+```bash
+from cryptography.fernet import Fernet
+```
+
+Luego se cargó la clave secreta desde el archivo secret.key:
+```bash
+with open("secret.key", "rb") as key_file:
+    key = key_file.read()
+
+fernet = Fernet(key)
+```
+
+
+Esto permite crear un objeto fernet encargado de cifrar la información.
+
+Dentro del loop principal del cliente, antes de enviar el mensaje al servidor, se cifró únicamente el contenido de payload:
+```bash
+payload_cifrada = fernet.encrypt(payload.encode("utf-8")).decode("utf-8")
+```
+
+En esta línea ocurren tres pasos:
+
+1. `payload.encode("utf-8")`: convierte el texto ingresado por el usuario a bytes.
+2. `fernet.encrypt(...)`: cifra esos bytes usando la clave secreta.
+3. `.decode("utf-8")`: convierte el resultado cifrado nuevamente a texto para poder incluirlo dentro del JSON.
+
+Luego se construyó el mensaje manteniendo visible el campo group, pero colocando la payload cifrada:
+
+```python
+message = {
+    "group": GROUP,
+    "payload": payload_cifrada
+}
+```
+
+Finalmente, el mensaje se serializó a JSON y se envió por TCP:
+```python
+client.sendall(json.dumps(message).encode("utf-8"))
+```
+
+El resultado obtenido fue el esperado. Del lado del cliente se ingresa un payload son cifrar y al llegar al servidor esta ya cifrado.
+
+![Mensaje cifrado por el cliente](assets/payloadCifrado.png)
+
+Como se puede ver en la imagen, del lado del cliente el mensaje sale sin cifrar, pero luego al enviarse y llegar al servido, este llega cifrado.
+
+
+## Punto 5 - Descifrado del lado del Servidor
+En este punto modificamos el servidor para que sea capaz de descifrar la `payload` enviada por el cliente.
+
+Como la técnica de cifrado utilizada es **simétrica**, el servidor necesita utilizar la misma clave secreta que usó el cliente para cifrar el mensaje. En este caso, como cliente y servidor se ejecutan en la misma computadora, ambos pueden acceder al mismo archivo `secret.key`.
+
+De esta forma, el mensaje sigue viajando cifrado por la red, pero una vez que llega al servidor, este puede recuperar el contenido original de la carga útil.
+
+Para ello, modificamos tambien el codigo del server. Siguiendo los mismos pasos que hicimos para cifrar, unicamente que esta vez desciframos el mensaje.
+
+![Mensaje descifrado por el server](./assets/payloadDescifrado.png)
+
+Como podemos ver, ahora el server puede descifrar el mensaje enviado por el cliente. Obteniendo asi, su contenido original.
+
+
+![Captura Wireshark](./assets/capturaWireshark.png)
+
+En la captura se puede observar que el mensaje enviado mantiene la estructura JSON esperada, pero el campo `payload` no contiene el texto original, sino una cadena cifrada generada por `Fernet`.
+
+Esto permite comprobar que la carga útil del mensaje viaja cifrada a través de la red. Es decir, si alguien interceptara el tráfico, podría ver que se envió un JSON con los campos `group` y `payload`, pero no podría conocer el contenido real del mensaje sin poseer la clave secreta.
+
+Al mismo tiempo, como el servidor sí posee la misma clave `secret.key`, puede descifrar correctamente la payload recibida y mostrar el mensaje original en consola.
