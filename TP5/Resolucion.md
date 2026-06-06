@@ -52,3 +52,15 @@ Una vez que TCP cumplió su trabajo y ordenó los paquetes, se los entrega al si
 | **UPLOAD** | Subir una foto de perfil en formato JPG, adjuntar un documento PDF para una tarea o cargar un archivo de video. | **Storage** (Almacenamiento de objetos). | Llenado rápido del disco de almacenamiento local del servidor de aplicaciones, provocando fallas imprevistas y el colapso del sistema operativo. |
 | **SEARCH** | Buscar un artículo escribiendo palabras clave en la barra de búsqueda (ej: "zapatillas deportivas impermeables"). | **Search Engine** dedicado. | Ejecución de consultas de texto (*queries*) sumamente ineficientes en la base de datos relacional, forzando escaneos completos de tablas que congelan el servicio. |
 | **MALICIOUS** | Ataques de denegación de servicio distribuido (DDoS), escaneos automatizados de vulnerabilidades o inyecciones de código. | **Firewall** | Consumo total e inmediato del ancho de banda y de los hilos de procesamiento, dejando la infraestructura completamente inaccesible para los usuarios legítimos. |
+
+
+
+## 3) Test de Queues
+
+Al aumentar fuertemente el traffic rate notamos que luego de la queue la cantidad de "bolitas" disminuye drásticamente, lo cual es acorde a la función de la queue que, como se mencionó antes, opera como buffer.
+
+![queue1](assets/queue_high_rate.png)
+
+Luego si bajamos el traffic rate a 0 instantáneamente observamos como desde la queue hacia la compute solo pasa el tráfico remanente que quedó buffereado antes.
+
+![queue2](assets/queue_0_rate.png)
