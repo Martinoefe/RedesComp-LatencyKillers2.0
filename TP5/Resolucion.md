@@ -1,4 +1,4 @@
-# Trabajo Práctico N°4 – Redes de Computadoras
+# Trabajo Práctico N°5 – Redes de Computadoras
  
 ## Integrantes
 
@@ -42,6 +42,11 @@ A la capa de Transporte (TCP) solo le importa que los paquetes lleguen completos
 
 Una vez que TCP cumplió su trabajo y ordenó los paquetes, se los entrega al sistema operativo. A partir de ahí todo lo que sucede con esos datos es tarea exclusiva de la capa de Aplicación.
 
+
+---
+
+
+
 ## 2) Tipos de Tráfico
 
 | Tipo de tráfico | Ejemplo real | Componente recomendado | Riesgo si se procesa incorrectamente |
@@ -54,6 +59,8 @@ Una vez que TCP cumplió su trabajo y ordenó los paquetes, se los entrega al si
 | **MALICIOUS** | Ataques de denegación de servicio distribuido (DDoS), escaneos automatizados de vulnerabilidades o inyecciones de código. | **Firewall** | Consumo total e inmediato del ancho de banda y de los hilos de procesamiento, dejando la infraestructura completamente inaccesible para los usuarios legítimos. |
 
 
+---
+
 
 ## 3) Test de Queues
 
@@ -64,3 +71,43 @@ Al aumentar fuertemente el traffic rate notamos que luego de la queue la cantida
 Luego si bajamos el traffic rate a 0 instantáneamente observamos como desde la queue hacia la compute solo pasa el tráfico remanente que quedó buffereado antes.
 
 ![queue2](assets/queue_0_rate.png)
+
+
+---
+
+
+## 4) Infraestructura mínima
+
+Armamos una infraestructura mínima que consta de un firewall para controlar el tráfico malicioso, un load balancer (en realidad como usamos un solo compute no lo queríamos poner, pero no nos deja pasar del firewall directamente a compute), un compute, una CDN que procesa el tráfico estático, un storage para uploads, un search para search valga la redundancia, y una NoSQL para las read y write.
+
+![arq_inicial](assets/arq_inicial.png)
+
+De este modo, comenzamos con el siguiente presupuesto:
+
+![budget](assets/presupuesto_inicial.png)
+
+Al comenzar la simulación con una bajo traffic rate se puede observar que la infraestructura es capaz de soportar la carga, como se ve en la imagen:
+
+![tranquilo](assets/tranquilo.png)
+
+Luego de aumentar el traffic rate a valores muy altos pudimos ver como el nodo compute colapsa, haciendo caer nuestra reputación casi al instante, como se puede observar en la imagen siguiente:
+
+![colapsado](assets/colapsado.png)
+
+Y la baja reputación:
+
+![reputacion](assets/reputacion.png)
+
+
+Entonces ¿Que sucedió realmente?
+
+Al desarrollar una infraestructura sin mecanismos de optimización y desacoplamiento para el tráfico dinámico transaccional tales como queues o cachés, el aumento repentino del traffic rate hace colapsar el sistema, en particular el nodo compute, que no puede procesar tantas solicitudes tan rápido, llegando al 100% de sus capacidades rápidamente. 
+
+Esto es claramente un problema de diseño, el núcleo dinámico de la red colapsó debido a una topología centralizada y síncrona. El simulador demuestra que el problema no se soluciona simplemente pagando por un componente de mayor "capacidad", sino modificando el diseño estructural para incorporar capas de caché y balanceo real que distribuyan el esfuerzo computacional. 
+
+
+---
+
+
+## 5) Escalabilidad y balanceo
+
