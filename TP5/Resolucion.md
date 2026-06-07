@@ -66,11 +66,15 @@ Una vez que TCP cumplió su trabajo y ordenó los paquetes, se los entrega al si
 
 Al aumentar fuertemente el traffic rate notamos que luego de la queue la cantidad de "bolitas" disminuye drásticamente, lo cual es acorde a la función de la queue que, como se mencionó antes, opera como buffer.
 
-![queue1](assets/queue_high_rate.png)
+<p align="center">
+  <img src="assets/queue_high_rate.png" width="700">
+</p>
 
 Luego si bajamos el traffic rate a 0 instantáneamente observamos como desde la queue hacia la compute solo pasa el tráfico remanente que quedó buffereado antes.
 
-![queue2](assets/queue_0_rate.png)
+<p align="center">
+  <img src="assets/queue_0_rate.png" width="700">
+</p>
 
 
 ---
@@ -80,27 +84,42 @@ Luego si bajamos el traffic rate a 0 instantáneamente observamos como desde la 
 
 Armamos una infraestructura mínima que consta de un firewall para controlar el tráfico `MALICIOUS`, un load balancer (en realidad como usamos un solo compute no lo queríamos poner, pero no nos deja pasar del firewall directamente a compute), un compute, una CDN que procesa el tráfico `STATIC`, un storage para `UPLOADS` y `STATIC`, un search para `SEARCH` (valga la redundancia), y una NoSQL para las `READ/WRITE`.
 
-![arq_inicial](assets/arq_inicial.png)
+<p align="center">
+  <img src="assets/arq_inicial.png" width="700">
+</p>
+
 
 De este modo, comenzamos con el siguiente presupuesto:
 
-![budget](assets/presupuesto_inicial.png)
+<p align="center">
+  <img src="assets/presupuesto_inicial.png">
+</p>
 
 Al comenzar la simulación con una bajo traffic rate se puede observar que la infraestructura es capaz de soportar la carga, como se ve en la imagen:
 
-![tranquilo](assets/tranquilo.png)
+<p align="center">
+  <img src="assets/tranquilo.png" width="700">
+</p>
 
 Además, el estado de salud de los servicios se mantiene alto:
 
-![service_health](assets/service_health.png)
+<p align="center">
+  <img src="assets/service_health.png">
+</p>
+
 
 Luego de aumentar el traffic rate a valores muy altos pudimos ver como el nodo compute colapsa, haciendo caer nuestra reputación casi al instante, como se puede observar en la imagen siguiente:
 
-![colapsado](assets/colapsado.png)
+<p align="center">
+  <img src="assets/colapsado.png" width="700">
+</p>
 
 Y la baja reputación:
 
-![reputacion](assets/reputacion.png)
+<p align="center">
+  <img src="assets/reputacion.png">
+</p>
+
 
 
 Entonces ¿Que sucedió realmente?
@@ -125,19 +144,26 @@ Estas estrategias contemplan formas de escalabilidad horizontal, como el hecho d
 
 Comenzamos solamente agregando más capacidad de cómputo y observamos que sucede.
 
-![agregamos_computo](assets/add_compute.png)
+<p align="center">
+  <img src="assets/add_compute.png" width="700">
+</p>
+
 
 Como podemos observar, escalar horizontalmente la capacidad de computo es de gran ayuda para poder procesar más tráfico a la vez, pero no es suficiente. Luego de un tiempo vemos como el sistema comienza a fallar o retrasarse en las resquets, haciendo que nuestra reputación comience a bajar.
 
 Pasemos entonces a ver que sucede cuando agregamos una caché.
 
-![agregamos_cache](assets/add_cache.png)
+<p align="center">
+  <img src="assets/add_cache.png" width="700">
+</p>
 
 Al agregar una caché que ayude al tráfico de `READ/WRITE` dirigido hacia la NoSQL, vemos que la infraestructura colapsa incluso con un traffic rate no especialmente alto, por lo que podemos suponer que el cuello de botella se encuentra en la sección anterior, el nodo de cómputo.
 
 Siguiendo con las estrategias, probaremos ahora añadir una cola de mensajes que sirva de buffer para el nodo de cómputo. La arquitectura ahora se ve de la siguiente manera:
 
-![agregamos_cola](assets/add_queue.png)
+<p align="center">
+  <img src="assets/add_queue.png" width="700">
+</p>
 
 Lo que observamos en la imagen es que la cola de mensajes ayuda hasta cierto punto a que el nodo cómputo trabaje más eficientemente, pero al subir el traffic rate vemos como otra vez esta mejora por sí sola no es suficiente.
 
@@ -147,8 +173,19 @@ El elemento clave detrás de esta arquitectura es el `API Gateway` que nos permi
 
 Probamos entonces la nueva arquitectura.
 
-![agregamos_apigw](assets/add_agw.png)
+<p align="center">
+  <img src="assets/add_agw.png" width="700">
+</p>
 
 Para nuestra sorpresa, esta arquitectura falla rápidamente incluso con bajos traffics rates, como podemos ver en la imagen.
 
 Podemos concluir luego de probar diferentes estrategias, que no hay una única estrategia salvadora. Para lograr una infraestructura robusta se necesita escalar tanto horizontal como verticalmente. De las pruebas que realizamos, la que mejor rendimiento obtuvo fue la primera en la cual escalamos horizontalmente la capacidad de cómputo y el sistema respondió de buena manera hasta que aumentamos el traffic rate a valores muy altos. Ninguna de las demás estrategias obtuvo rendimientos similares a ese. Por ese motivo creemos que el escalamiento horizontal es clave y mejora notablemente los sistemas, aunque no es suficiente por sí solo. Se necesita mejorar los elementos y además agregar mecanismos como colas, cachés y réplicas que ayuden al procesamiento del tráfico.
+
+
+---
+
+## 6) SURVIVAL
+
+
+
+
