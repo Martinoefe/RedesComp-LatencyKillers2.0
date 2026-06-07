@@ -78,7 +78,7 @@ Luego si bajamos el traffic rate a 0 instantáneamente observamos como desde la 
 
 ## 4) Infraestructura mínima
 
-Armamos una infraestructura mínima que consta de un firewall para controlar el tráfico malicioso, un load balancer (en realidad como usamos un solo compute no lo queríamos poner, pero no nos deja pasar del firewall directamente a compute), un compute, una CDN que procesa el tráfico estático, un storage para uploads, un search para search valga la redundancia, y una NoSQL para las read y write.
+Armamos una infraestructura mínima que consta de un firewall para controlar el tráfico `MALICIOUS`, un load balancer (en realidad como usamos un solo compute no lo queríamos poner, pero no nos deja pasar del firewall directamente a compute), un compute, una CDN que procesa el tráfico `STATIC`, un storage para `UPLOADS` y `STATIC`, un search para `SEARCH` (valga la redundancia), y una NoSQL para las `READ/WRITE`.
 
 ![arq_inicial](assets/arq_inicial.png)
 
@@ -89,6 +89,10 @@ De este modo, comenzamos con el siguiente presupuesto:
 Al comenzar la simulación con una bajo traffic rate se puede observar que la infraestructura es capaz de soportar la carga, como se ve en la imagen:
 
 ![tranquilo](assets/tranquilo.png)
+
+Además, el estado de salud de los servicios se mantiene alto:
+
+![service_health](assets/service_health.png)
 
 Luego de aumentar el traffic rate a valores muy altos pudimos ver como el nodo compute colapsa, haciendo caer nuestra reputación casi al instante, como se puede observar en la imagen siguiente:
 
@@ -103,11 +107,48 @@ Entonces ¿Que sucedió realmente?
 
 Al desarrollar una infraestructura sin mecanismos de optimización y desacoplamiento para el tráfico dinámico transaccional tales como queues o cachés, el aumento repentino del traffic rate hace colapsar el sistema, en particular el nodo compute, que no puede procesar tantas solicitudes tan rápido, llegando al 100% de sus capacidades rápidamente. 
 
-Esto es claramente un problema de diseño, el núcleo dinámico de la red colapsó debido a una topología centralizada y síncrona. El simulador demuestra que el problema no se soluciona simplemente pagando por un componente de mayor "capacidad", sino modificando el diseño estructural para incorporar capas de caché y balanceo real que distribuyan el esfuerzo computacional. 
-
+Esto es claramente un problema de diseño, el núcleo dinámico de la red colapsó debido a una topología centralizada y síncrona.
 
 ---
 
 
 ## 5) Escalabilidad y balanceo
 
+Para solucionar los problemas ocasionados por las fallas de diseño en la arquitectura del apartado anterior, probaremos las siguientes estrategias:
+
+    -Agregar más capacidad de cómputo.
+    -Agregar caché.
+    -Agregar cola de mensajes. 
+    -Separar servicios según tipo de tráfico. 
+
+Estas estrategias contemplan formas de escalabilidad horizontal, como el hecho de agregar mas nodo compute, y también mejoran el balanceo de cargas como al hacer una separación de servicios según el tipo de tráfico.
+
+Comenzamos solamente agregando más capacidad de cómputo y observamos que sucede.
+
+![agregamos_computo](assets/add_compute.png)
+
+Como podemos observar, escalar horizontalmente la capacidad de computo es de gran ayuda para poder procesar más tráfico a la vez, pero no es suficiente. Luego de un tiempo vemos como el sistema comienza a fallar o retrasarse en las resquets, haciendo que nuestra reputación comience a bajar.
+
+Pasemos entonces a ver que sucede cuando agregamos una caché.
+
+![agregamos_cache](assets/add_cache.png)
+
+Al agregar una caché que ayude al tráfico de `READ/WRITE` dirigido hacia la NoSQL, vemos que la infraestructura colapsa incluso con un traffic rate no especialmente alto, por lo que podemos suponer que el cuello de botella se encuentra en la sección anterior, el nodo de cómputo.
+
+Siguiendo con las estrategias, probaremos ahora añadir una cola de mensajes que sirva de buffer para el nodo de cómputo. La arquitectura ahora se ve de la siguiente manera:
+
+![agregamos_cola](assets/add_queue.png)
+
+Lo que observamos en la imagen es que la cola de mensajes ayuda hasta cierto punto a que el nodo cómputo trabaje más eficientemente, pero al subir el traffic rate vemos como otra vez esta mejora por sí sola no es suficiente.
+
+Veremos ahora que sucede si diseñamos una arquitectura que separe los servicios según el tipo de tráfico que procesan. Para ello, nuestra infraestructura constará de tres "líneas" de tráfico: la primera se encargará del tráfico de  `READ/WRITE`, la segunda del tráfico `SEARCH` y, por último, la tercera se encargará del tráfico `UPLOADS` y `STATIC`.
+
+El elemento clave detrás de esta arquitectura es el `API Gateway` que nos permite diferenciar los tipos de tráfico que entran en cada cola de mensajes. Sin este elemento, no habría quién diga "vos sos un `SEARCH` entonces vas a esta cola, vos sos un `UPLOAD` vas a esta otra".
+
+Probamos entonces la nueva arquitectura.
+
+![agregamos_apigw](assets/add_agw.png)
+
+Para nuestra sorpresa, esta arquitectura falla rápidamente incluso con bajos traffics rates, como podemos ver en la imagen.
+
+Podemos concluir luego de probar diferentes estrategias, que no hay una única estrategia salvadora. Para lograr una infraestructura robusta se necesita escalar tanto horizontal como verticalmente. De las pruebas que realizamos, la que mejor rendimiento obtuvo fue la primera en la cual escalamos horizontalmente la capacidad de cómputo y el sistema respondió de buena manera hasta que aumentamos el traffic rate a valores muy altos. Ninguna de las demás estrategias obtuvo rendimientos similares a ese. Por ese motivo creemos que el escalamiento horizontal es clave y mejora notablemente los sistemas, aunque no es suficiente por sí solo. Se necesita mejorar los elementos y además agregar mecanismos como colas, cachés y réplicas que ayuden al procesamiento del tráfico.
