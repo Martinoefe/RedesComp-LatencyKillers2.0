@@ -177,7 +177,7 @@ Probamos entonces la nueva arquitectura.
   <img src="assets/add_agw.png" width="700">
 </p>
 
-Para nuestra sorpresa, esta arquitectura falla rápidamente incluso con bajos traffics rates, como podemos ver en la imagen.
+Observamos que esta arquitectura resulta ineficiente cuando el tráfico no se distribuye de forma homogénea. Por ejemplo, la rama encargada de las operaciones `SEARCH` puede recibir mucho menos tráfico que la dedicada a operaciones `READ/WRITE`, generando una sobrecarga en esta última mientras la primera permanece subutilizada.
 
 Podemos concluir luego de probar diferentes estrategias, que no hay una única estrategia salvadora. Para lograr una infraestructura robusta se necesita escalar tanto horizontal como verticalmente. De las pruebas que realizamos, la que mejor rendimiento obtuvo fue la primera en la cual escalamos horizontalmente la capacidad de cómputo y el sistema respondió de buena manera hasta que aumentamos el traffic rate a valores muy altos. Ninguna de las demás estrategias obtuvo rendimientos similares a ese. Por ese motivo creemos que el escalamiento horizontal es clave y mejora notablemente los sistemas, aunque no es suficiente por sí solo. Se necesita mejorar los elementos y además agregar mecanismos como colas, cachés y réplicas que ayuden al procesamiento del tráfico.
 
@@ -187,5 +187,45 @@ Podemos concluir luego de probar diferentes estrategias, que no hay una única e
 ## 6) SURVIVAL
 
 
+<p align="center">
+  <img src="assets/arq_final_survival.png" width="700">
+</p>
 
+Comenzamos con una arquitectura básica que constaba de un firewall, una queue, un load balancer, dos nodos compute, una SQL y una CDN.
+Luego comenzamos a escalar horizontalmente los compute, añadimos caché para la base de datos, un storage vinculado también a la CDN, agregamos un motor de búsqueda y una base de datos NoSQL, utilizamos réplica e incluso una λ function.
 
+Elegimos comenzar con esa arquitectura básica porque nos permite procesar queries de todo tipo ya sean `SEARCH`, `READ/WRITE`, `STATIC` o `UPLOADS`, a la vez que filtra el tráfico malicioso mediante el firewall. 
+
+Entonces, elegimos cada componente para una función en particular:
+
+- firewall: porque necesitamos bloquear el tráfico malicioso sí o sí.
+
+- queue: mantiene el throughput de entrada a los servidores controlado por debajo de su límite máximo.
+
+- load balancer: distribuye las peticiones entrantes de manera equitativa entre las distintas instancias de cómputo para evitar la saturación de un único nodo.
+
+- compute: ejecuta la lógica de negocio de la aplicación y procesa las solicitudes dinámicas que son retiradas de la cola de mensajes.
+
+- SQL DB: funciona como el motor de persistencia centralizado, relacional y estructurado para almacenar los datos críticos del sistema garantizando consistencia.
+
+- CDN: se encarga de cachear y servir el contenido del tipo `STATIC` en el borde de la red, aliviando el ancho de banda del backend.
+
+Con la evolución de la arquitectura hacia un modelo escalable y optimizado, incorporamos nuevos componentes específicos para distribuir el esfuerzo computacional y mitigar los cuellos de botella:
+
+- cache: almacena en memoria RAM las consultas más frecuentes para resolver los `READ` en milisegundos, evitando que el tráfico repetitivo golpee el disco de la base de datos.
+
+- storage: actúa como el destino final optimizado para el tráfico de `UPLOAD` y almacenamiento de archivos pesados, desacoplándolo del almacenamiento local del servidor.
+
+- search: asume de forma exclusiva el procesamiento de las peticiones `SEARCH`, resolviendo búsquedas complejas indexadas a gran velocidad sin estresar a la base de datos transaccional.
+
+- NoSQL: maneja un alto volumen de escrituras y lecturas rápidas no relacionales, ofreciendo una tasa de transferencia de datos superior para flujos dinámicos masivos.
+
+- réplica: duplica los datos del nodo maestro para absorber de manera dedicada el tráfico de READ, permitiendo que la base de datos principal se concentre únicamente en los WRITE.
+
+- λ function: proporciona capacidad de cómputo serverless basada en eventos para absorber ráfagas imprevistas de tráfico de forma aislada y autoescalable, pagando únicamente por el tiempo exacto de ejecución. La incluímos para sobrevivir a los ataques DDoS, aunque es una espada de doble filo porque luego de un ataque grande, el gasto es también muy grande
+
+Con todo esto, logramos un score superior a 150k
+
+<p align="center">
+  <img src="assets/end_survival.png">
+</p>
